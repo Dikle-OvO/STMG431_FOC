@@ -18,11 +18,17 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
+#include "dma.h"
+#include "i2c.h"
+#include "tim.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+// #include "usbd_cdc_if.h"
+#include "AS5600.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,13 +54,15 @@
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+extern TIM_HandleTypeDef htim3;
+extern I2C_HandleTypeDef hi2c1;
 /* USER CODE END 0 */
 
 /**
@@ -86,9 +94,49 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
+  MX_TIM3_Init();
+  MX_USART1_UART_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
+
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1,0);
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2,0);
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3,0);
+
+  HAL_StatusTypeDef device_status;
+  // HAL_I2C_IsDeviceReady 的地址参数需要左移一位 (7-bit address -> 8-bit R/W format)
+  device_status = HAL_I2C_IsDeviceReady(&hi2c1, (AS5600_DEVICE_ADDRESS << 1), 2, 100);
+
+  if (device_status == HAL_OK)
+  {
+    // 设备已连接
+    HAL_UART_Transmit_DMA(&huart1,"AS5600 Ready.\r\n",sizeof("AS5600 Ready.\r\n"));
+  }
+  else
+  {
+    // 设备未响应，请检查上拉电阻和接线
+    HAL_UART_Transmit_DMA(&huart1,"AS5600 Not Found.\r\n",sizeof("AS5600 Not Found.\r\n"));
+  }
+  // HAL_Delay(1);
+  while (HAL_UART_GetState(&huart1) == HAL_UART_STATE_BUSY_TX);
+  HAL_UART_Transmit_DMA(&huart1,"Start\r\n",sizeof("Start\r\n"));
+
+
 
   /* USER CODE END 2 */
+
+  /* Init scheduler */
+  osKernelInitialize();  /* Call init function for freertos objects (in cmsis_os2.c) */
+  MX_FREERTOS_Init();
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -149,6 +197,28 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM16 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM16)
+  {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.
