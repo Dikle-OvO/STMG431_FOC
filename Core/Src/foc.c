@@ -73,7 +73,7 @@ void setPhaseVoltage(float Uq,float Ud, float angle_el) {
 }
 
 
-//开环速度函数
+//开环速度函数test
 float velocityOpenloop(float target_velocity){
   // *** MODIFIED ***
   // 获取从 FreeRTOS 调度器启动以来的毫秒数 (Tick 数)
