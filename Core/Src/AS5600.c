@@ -9,17 +9,13 @@
 extern I2C_HandleTypeDef hi2c1;
 extern UART_HandleTypeDef huart1;
 
-void AS5600_test(void)
+float AngleDegrees = 0.0f;
+
+float AS5600_Read(void)
 {
-    while (1)
-    {
-        /* USER CODE END WHILE */
-
-        /* USER CODE BEGIN 3 */
-
-        uint8_t i2c_rx_buffer[2]; //
+        uint8_t i2c_rx_buffer[2];
         uint16_t raw_angle = 0;
-        float angle_degrees = 0.0f;
+
         HAL_StatusTypeDef read_status;
 
         // 1. 调用 HAL_I2C_Mem_Read
@@ -53,20 +49,19 @@ void AS5600_test(void)
 
             // 4. 转换为角度
             // 4096 对应 360 度
-            angle_degrees = (float)raw_angle * (360.0f / 4096.0f);
+            AngleDegrees = (float)raw_angle * (360.0f / 4096.0f);
 
             char tx_buffer[64];
-            int as5600_strlen = sprintf(tx_buffer, "%d,%d\r\n", (int)(raw_angle), (int)(angle_degrees));
+            int as5600_strlen = sprintf(tx_buffer, "%d,%d\r\n", (int)(raw_angle), (int)(AngleDegrees));
             HAL_UART_Transmit_DMA(&huart1, tx_buffer, as5600_strlen);
 
+            return AngleDegrees;
         }
         else
         {
             // I2C 读取失败
             // printf("I2C Read Error!\n");
+            return 0.0f;
         }
 
-        // 5. 延迟一段时间
-        HAL_Delay(100); // 每 100ms 读取一次
-    }
 }

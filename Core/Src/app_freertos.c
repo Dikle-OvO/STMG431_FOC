@@ -28,6 +28,7 @@
 #include "foc.h"
 #include "usart.h"
 #include "AS5600.h"
+#include "foc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,6 +50,10 @@
 /* USER CODE BEGIN Variables */
 extern TIM_HandleTypeDef htim3;
 extern UART_HandleTypeDef huart1;
+
+#define _3PI_2 4.71238898038f
+extern float zero_electric_angle;
+extern float AngleDegrees;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -121,17 +126,18 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-  // for (int i=0;i<=100;i++) {
-  //   __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1,i);
-  //   osDelay(10);
-  // }
-  //
-  // for (int i=100;i>=0;i--) {
-  //   __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1,i);
-  //   osDelay(10);
-  // }
-  // osDelay(10);
-    AS5600_test();
+  for (int i=0;i<=100;i++) {
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1,i);
+    osDelay(10);
+  }
+
+  for (int i=100;i>=0;i--) {
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1,i);
+    osDelay(10);
+  }
+  osDelay(10);
+
+    AS5600_Read();
   }
   /* USER CODE END StartDefaultTask */
 }
@@ -139,11 +145,25 @@ void StartDefaultTask(void *argument)
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
 void vTestTask(void *pvParameters) {
+  // 1. 让磁场停在电角度 0 度的位置 (Ud=3, Uq=0, angle=0)
+  // setPhaseVoltage(0, 3.0f, 0);
+  // vTaskDelay(3000);
+  //
+  // // 2. 核心：直接计算机械角度对应的电角度，不要调用 CalElectricalAngle()
+  // // 这里的偏移量 = 当前的机械角度(弧度) * 极对数
+  // zero_electric_angle = (1 * AngleDegrees * PI / 180.0f) * (float)7;
+  // zero_electric_angle = _normalizeAngle(zero_electric_angle);
+  //
+  // // 3. 此时，你的 CalElectricalAngle() 算出来的结果在当前位置应该接近 0
+  // setPhaseVoltage(0, 0, 0); // 停机备用
+
   while (1) {
     // HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
-    osDelay(1);
+
     // HAL_UART_Transmit_DMA(&huart1,"Hi DMA\r\n",sizeof("Hi DMA\r\n"));
-    FOC_test();
+
+    // osDelay(1);
+    // FOC_test();
   }
 
 }
