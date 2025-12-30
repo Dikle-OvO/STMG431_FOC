@@ -5,11 +5,13 @@
 #include "../Inc/AS5600.h"
 #include "main.h"
 #include "stdio.h"
+#include "math.h"
 
 extern I2C_HandleTypeDef hi2c1;
 extern UART_HandleTypeDef huart1;
 
 float AngleDegrees = 0.0f;
+float AngleRadians = 0.0f;
 
 float AS5600_Read(void)
 {
@@ -45,13 +47,13 @@ float AS5600_Read(void)
             raw_angle = ((uint16_t)i2c_rx_buffer[0] << 8) | i2c_rx_buffer[1];
 
             // AS5600 的输出是 12-bit 的 (0 - 4095)
-            // raw_angle &= 0x0FFF; // 确保是12位 (虽然读出来就是12位，做个掩码更安全)
+            raw_angle &= 0x0FFF; // 确保是12位 (虽然读出来就是12位，做个掩码更安全)
 
-            // 4. 转换为角度
-            // 4096 对应 360 度
+            // 4. 转换为角度 弧度
             AngleDegrees = (float)raw_angle * (360.0f / 4096.0f);
+            AngleRadians = AngleDegrees * (M_PI / 180.0f);
 
-            char tx_buffer[64];
+            static char tx_buffer[24];
             int as5600_strlen = sprintf(tx_buffer, "%d,%d\r\n", (int)(raw_angle), (int)(AngleDegrees));
             HAL_UART_Transmit_DMA(&huart1, tx_buffer, as5600_strlen);
 

@@ -15,6 +15,7 @@
 extern TIM_HandleTypeDef htim3;
 extern UART_HandleTypeDef huart1;
 extern float AngleDegrees;
+extern float AngleRadians;
 
 //初始变量及函数定义
 #define _constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
@@ -37,13 +38,9 @@ float _normalizeAngle(float angle){
   return a >= 0 ? a : (a + 2*PI);
 }
 
-int PP=7,DIR=1;
+int PP=7,DIR=-1;
 float CalElectricalAngle() {
-  // 1. 将 0-360 度转换为 0-2PI 弧度
-  float shaft_angle_rad = (DIR * AngleDegrees) * (PI / 180.0f);
-
-  // 2. 计算电角度弧度：机械弧度 * 极对数 - 偏移弧度
-  float el_angle = shaft_angle_rad * (float)PP - zero_electric_angle;
+  float el_angle = (float)DIR * AngleRadians * (float)PP - zero_electric_angle;
 
   return _normalizeAngle(el_angle);
 }
@@ -56,15 +53,20 @@ void setPwm(float Ua, float Ub, float Uc) {
   dc_c = _constrain(Uc / voltage_power_supply, 0.0f , 1.0f );
 
   // 2. 映射到 ARR 值 (8500)
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (int)(dc_a * 100));
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (int)(dc_b * 100));
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, (int)(dc_c * 100));
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (int)(dc_a * 8500));
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (int)(dc_b * 8500));
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, (int)(dc_c * 8500));
+
+  // static char tx_buffer[24];
+  // int as5600_strlen = sprintf(tx_buffer, "%d,%d,%d\r\n", (int)(dc_a * 8499), (int)(dc_b * 8499), (int)(dc_c * 8499));
+  // HAL_UART_Transmit_DMA(&huart1, tx_buffer, as5600_strlen);
 }
 
-void setPhaseVoltage(float Uq, float Ud, float angle_el_rad) {
-  // 强制使用 sinf/cosf (float版本) 提高在 G431 上的运算速度
-  Ualpha = -Uq * sinf(angle_el_rad);
-  Ubeta  =  Uq * cosf(angle_el_rad);
+void setPhaseVoltage(float Uq, float Ud, float angle_el) {
+  angle_el = _normalizeAngle(angle_el);
+
+  Ualpha = -Uq * sinf(angle_el);
+  Ubeta  =  Uq * cosf(angle_el);
 
   Ua = Ualpha + voltage_power_supply/2.0f;
   Ub = (sqrtf(3.0f)*Ubeta - Ualpha)/2.0f + voltage_power_supply/2.0f;
@@ -103,19 +105,36 @@ float velocityOpenloop(float target_velocity){
 }
 
 
+void speed_open(void) {
+  while (1) {
+    AS5600_Read(); // 获取当前 AngleRadians
+
+    // 1. 强制给一个恒定的 2V 力矩 (Uq = 2.0, Ud = 0)
+    // 2. 使用包含 DIR 的电角度公式
+    float el_angle = (float)(DIR * 7) * AngleRadians - zero_electric_angle;
+
+    setPhaseVoltage(1.0f, 0, _normalizeAngle(el_angle));
+  }
+}
 
 void FOC_test(void) {
   // 开环速度
-  velocityOpenloop(10);
+  // velocityOpenloop(1);
+
+  speed_open();
 
   // 闭环位置
-  // static float Kp = 0.133;
-  //
-  // float target_angle = 70.0f;
-  // float current_angle = DIR * AngleDegrees;
-  // float motor_err = target_angle - current_angle;
-  // float Uq = Kp * motor_err;
-  //
-  // Uq = _constrain(Uq, -6.0f, 6.0f);
-  // setPhaseVoltage(Uq, 0, CalElectricalAngle());
+  static float Kp = 0.033;
+
+  float target_angle = 70.0f;
+  float current_angle =AngleDegrees;
+  float motor_err = target_angle - current_angle;
+  float Uq = Kp * motor_err;
+
+  Uq = _constrain(Uq, -6.0f, 6.0f);
+  setPhaseVoltage(Uq, 0, CalElectricalAngle());
+
+  // static char tx_buffer[24];
+  // int as5600_strlen = sprintf(tx_buffer, "%d,%d\r\n", (int)(Uq), (int)(motor_err));
+  // HAL_UART_Transmit_DMA(&huart1, tx_buffer, as5600_strlen);
 }
