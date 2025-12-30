@@ -38,6 +38,8 @@ extern "C" {
 /* USER CODE BEGIN ET */
 extern osMessageQueueId_t LEDQueueHandle;
 extern osMessageQueueId_t CommandQueueHandle;
+extern TIM_HandleTypeDef htim3;
+extern UART_HandleTypeDef huart1;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

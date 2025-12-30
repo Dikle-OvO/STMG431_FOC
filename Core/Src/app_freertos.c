@@ -53,11 +53,7 @@
 extern TIM_HandleTypeDef htim3;
 extern UART_HandleTypeDef huart1;
 
-#define _3PI_2 4.71238898038f
-extern float zero_electric_angle;
-extern float AngleDegrees;
-extern float AngleRadians;
-extern int PP,DIR;
+
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -87,6 +83,13 @@ const osThreadAttr_t CommandTasks_attributes = {
   .priority = (osPriority_t) osPriorityAboveNormal,
   .stack_size = 128 * 4
 };
+/* Definitions for FOCTask */
+osThreadId_t FOCTaskHandle;
+const osThreadAttr_t FOCTask_attributes = {
+  .name = "FOCTask",
+  .priority = (osPriority_t) osPriorityNormal,
+  .stack_size = 128 * 4
+};
 /* Definitions for LEDQueue */
 osMessageQueueId_t LEDQueueHandle;
 const osMessageQueueAttr_t LEDQueue_attributes = {
@@ -107,6 +110,7 @@ void StartDefaultTask(void *argument);
 extern void StartKeyTask(void *argument);
 extern void StartLEDTask(void *argument);
 extern void CommandStartTask(void *argument);
+extern void FOCStartTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -156,9 +160,11 @@ void MX_FREERTOS_Init(void) {
   /* creation of CommandTasks */
   CommandTasksHandle = osThreadNew(CommandStartTask, NULL, &CommandTasks_attributes);
 
+  /* creation of FOCTask */
+  FOCTaskHandle = osThreadNew(FOCStartTask, NULL, &FOCTask_attributes);
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
-  // xTaskCreate(vTestTask,"vTestTask",512,NULL,osPriorityNormal1,NULL);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -187,28 +193,5 @@ void StartDefaultTask(void *argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
-void vTestTask(void *pvParameters) {
-  setPhaseVoltage(3, 0.0f, 4.712389f);
-  vTaskDelay(2000);
-  // AS5600_Read();
-  setPhaseVoltage(0, 0, 4.712389f);
-  while (1) {
-    AS5600_Read();
-    zero_electric_angle = CalElectricalAngle();
-  }
-
-  //
-  // setPhaseVoltage(0, 0, 4.712389f);
-
-  while (1) {
-    // HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);
-
-    // HAL_UART_Transmit_DMA(&huart1,"Hi DMA\r\n",sizeof("Hi DMA\r\n"));
-
-    // osDelay(1);
-    AS5600_Read();
-    FOC_test();
-  }
-}
 /* USER CODE END Application */
 

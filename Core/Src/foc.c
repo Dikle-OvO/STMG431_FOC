@@ -12,8 +12,7 @@
 #include "stdio.h"
 #include "usart.h"
 
-extern TIM_HandleTypeDef htim3;
-extern UART_HandleTypeDef huart1;
+
 extern float AngleDegrees;
 extern float AngleRadians;
 
@@ -119,20 +118,21 @@ void speed_open(void) {
 
 void FOC_test(void) {
   // 开环速度
-  // velocityOpenloop(1);
+  for (;;)
+  velocityOpenloop(5);
 
-  speed_open();
+  // speed_open();
 
   // 闭环位置
-  static float Kp = 0.033;
-
-  float target_angle = 70.0f;
-  float current_angle =AngleDegrees;
-  float motor_err = target_angle - current_angle;
-  float Uq = Kp * motor_err;
-
-  Uq = _constrain(Uq, -6.0f, 6.0f);
-  setPhaseVoltage(Uq, 0, CalElectricalAngle());
+  // static float Kp = 0.033;
+  //
+  // float target_angle = 70.0f;
+  // float current_angle =AngleDegrees;
+  // float motor_err = target_angle - current_angle;
+  // float Uq = Kp * motor_err;
+  //
+  // Uq = _constrain(Uq, -6.0f, 6.0f);
+  // setPhaseVoltage(Uq, 0, CalElectricalAngle());
 
   // static char tx_buffer[24];
   // int as5600_strlen = sprintf(tx_buffer, "%d,%d\r\n", (int)(Uq), (int)(motor_err));

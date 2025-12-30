@@ -121,7 +121,7 @@ int main(void)
   }
   // HAL_Delay(1);
   while (HAL_UART_GetState(&huart1) == HAL_UART_STATE_BUSY_TX);
-  HAL_UART_Transmit_DMA(&huart1,"Start\r\n",sizeof("Start\r\n"));
+  HAL_UART_Transmit_DMA(&huart1,"App Start\r\n",sizeof("App Start\r\n"));
 
 
 
