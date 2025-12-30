@@ -4,17 +4,14 @@
 
 #include "../Inc/foc.h"
 
-#include "AS5600.h"
 #include "main.h"
 #include "math.h"
 #include "FreeRTOS.h" // 用于 FreeRTOS API
 #include "task.h"     // 用于 xTaskGetTickCount
 #include "stdio.h"
 #include "usart.h"
+#include "AS5600.h"
 
-
-extern float AngleDegrees;
-extern float AngleRadians;
 
 //初始变量及函数定义
 #define _constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
@@ -26,7 +23,7 @@ float zero_electric_angle=0;
 // TickType_t 是 FreeRTOS 中标准的时间类型 (通常是 uint32_t)
 TickType_t open_loop_timestamp = 0;
 
-// 电角度求解(开环)
+// 电角度求解
 float _electricalAngle(float shaft_angle, int pole_pairs) {
   return (shaft_angle * pole_pairs);
 }
@@ -37,48 +34,48 @@ float _normalizeAngle(float angle){
   return a >= 0 ? a : (a + 2*PI);
 }
 
-int PP=7,DIR=-1;
-float CalElectricalAngle() {
-  float el_angle = (float)DIR * AngleRadians * (float)PP - zero_electric_angle;
-
-  return _normalizeAngle(el_angle);
-}
 
 // 设置PWM到控制器输出
 void setPwm(float Ua, float Ub, float Uc) {
-  // 1. 计算占空比 (0.0 ~ 1.0)
+
+  // 计算占空比
+  // 限制占空比从0到1
   dc_a = _constrain(Ua / voltage_power_supply, 0.0f , 1.0f );
   dc_b = _constrain(Ub / voltage_power_supply, 0.0f , 1.0f );
   dc_c = _constrain(Uc / voltage_power_supply, 0.0f , 1.0f );
 
-  // 2. 映射到 ARR 值 (8500)
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (int)(dc_a * 8500));
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (int)(dc_b * 8500));
-  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, (int)(dc_c * 8500));
+  //写入PWM到PWM 0 1 2 通道
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (int)(dc_a*8500));
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, (int)(dc_b*8500));
+  __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, (int)(dc_c*8500));
+  static char tx_buffer[64];
+  // int foc_strlen = sprintf(tx_buffer, "%0.2f,%0.2f,%0.2f\r\n", dc_a, dc_b, dc_c);
+  int foc_strlen = sprintf(tx_buffer, "%d,%d,%d\r\n", (int)(dc_a*8500), (int)(dc_b*8500), (int)(dc_c*8500));
 
-  // static char tx_buffer[24];
-  // int as5600_strlen = sprintf(tx_buffer, "%d,%d,%d\r\n", (int)(dc_a * 8499), (int)(dc_b * 8499), (int)(dc_c * 8499));
-  // HAL_UART_Transmit_DMA(&huart1, tx_buffer, as5600_strlen);
+  HAL_UART_Transmit_DMA(&huart1, tx_buffer, foc_strlen);
+  // HAL_UART_Transmit_DMA(&huart1,"Hi DMA\r\n",sizeof("Hi DMA\r\n"));
 }
 
-void setPhaseVoltage(float Uq, float Ud, float angle_el) {
-  angle_el = _normalizeAngle(angle_el);
+void setPhaseVoltage(float Uq,float Ud, float angle_el) {
+  angle_el = _normalizeAngle(angle_el + zero_electric_angle);
+  // 帕克逆变换
+  Ualpha =  -Uq*sin(angle_el);
+  Ubeta =   Uq*cos(angle_el);
 
-  Ualpha = -Uq * sinf(angle_el);
-  Ubeta  =  Uq * cosf(angle_el);
+  // 克拉克逆变换
+  Ua = Ualpha + voltage_power_supply/2;
+  Ub = (sqrt(3)*Ubeta-Ualpha)/2 + voltage_power_supply/2;
+  Uc = (-Ualpha-sqrt(3)*Ubeta)/2 + voltage_power_supply/2;
 
-  Ua = Ualpha + voltage_power_supply/2.0f;
-  Ub = (sqrtf(3.0f)*Ubeta - Ualpha)/2.0f + voltage_power_supply/2.0f;
-  Uc = (-Ualpha - sqrtf(3.0f)*Ubeta)/2.0f + voltage_power_supply/2.0f;
-
-  setPwm(Ua, Ub, Uc);
+  setPwm(Ua,Ub,Uc);
 }
 
 
 //开环速度函数test
 float velocityOpenloop(float target_velocity){
+  // *** MODIFIED ***
   // 获取从 FreeRTOS 调度器启动以来的毫秒数 (Tick 数)
-  TickType_t now_ms = xTaskGetTickCount(); 
+  TickType_t now_ms = xTaskGetTickCount();
 
   // 计算当前每个Loop的运行时间间隔
   // (now_ms - open_loop_timestamp) 是 Tick 差值
@@ -103,6 +100,14 @@ float velocityOpenloop(float target_velocity){
   return Uq;
 }
 
+extern float AngleDegrees;
+extern float AngleRadians;
+int PP=7,DIR=-1;
+// float CalElectricalAngle() {
+//   float el_angle = (float)DIR * AngleRadians * (float)PP - zero_electric_angle;
+//
+//   return _normalizeAngle(el_angle);
+// }
 
 void speed_open(void) {
   while (1) {
@@ -112,20 +117,17 @@ void speed_open(void) {
     // 2. 使用包含 DIR 的电角度公式
     float el_angle = (float)(DIR * 7) * AngleRadians - zero_electric_angle;
 
-    setPhaseVoltage(1.0f, 0, _normalizeAngle(el_angle));
+    setPhaseVoltage(3.0f, 0, _normalizeAngle(el_angle));
   }
 }
 
 void FOC_test(void) {
-  // 开环速度
-  for (;;)
-  velocityOpenloop(5);
-
-  // speed_open();
+    // velocityOpenloop(10);
+    speed_open();
 
   // 闭环位置
   // static float Kp = 0.033;
-  //
+  // AS5600_Read();
   // float target_angle = 70.0f;
   // float current_angle =AngleDegrees;
   // float motor_err = target_angle - current_angle;

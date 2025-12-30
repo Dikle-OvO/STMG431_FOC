@@ -54,8 +54,8 @@ float AS5600_Read(void)
             AngleRadians = AngleDegrees * (M_PI / 180.0f);
 
             static char tx_buffer[24];
-            int as5600_strlen = sprintf(tx_buffer, "%d,%d\r\n", (int)(raw_angle), (int)(AngleDegrees));
-            HAL_UART_Transmit_DMA(&huart1, tx_buffer, as5600_strlen);
+            // int as5600_strlen = sprintf(tx_buffer, "%d,%d\r\n", (int)(raw_angle), (int)(AngleDegrees));
+            // HAL_UART_Transmit_DMA(&huart1, tx_buffer, as5600_strlen);
 
             return AngleDegrees;
         }
