@@ -34,7 +34,9 @@ message("Build type: " ${CMAKE_BUILD_TYPE})
 enable_language(C ASM)
 
 # Create an executable object type
-add_executable(${CMAKE_PROJECT_NAME})
+add_executable(${CMAKE_PROJECT_NAME}
+
+)
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
@@ -47,13 +49,18 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/foc.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/AS5600.c
+    Core/Src/foc.c
+    Core/Src/AS5600.c
+
+    Core/App/Tasks/KeyTasks.c
+    Core/App/Tasks/LEDTasks.c
+        Core/App/Tasks/ControlTasks.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
+    ${CMAKE_CURRENT_SOURCE_DIR}/Core/App
 )
 
 # Add project symbols (macros)
