@@ -161,7 +161,7 @@ void MX_FREERTOS_Init(void) {
   CommandTasksHandle = osThreadNew(CommandStartTask, NULL, &CommandTasks_attributes);
 
   /* creation of FOCTask */
-  FOCTaskHandle = osThreadNew(FOCStartTask, NULL, &FOCTask_attributes);
+  // FOCTaskHandle = osThreadNew(FOCStartTask, NULL, &FOCTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
