@@ -7,6 +7,9 @@
 
 #define PI 3.1415926f
 
+float _normalizeAngle(float angle);
+float CalElectricalAngle();
+void setPhaseVoltage(float Uq,float Ud, float angle_el);
 void FOC_test(void);
 
 #endif //FOC_TEST_FOC_H

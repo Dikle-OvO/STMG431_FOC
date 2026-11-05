@@ -113,12 +113,10 @@ int main(void)
 
   if (device_status == HAL_OK)
   {
-    // 设备已连接
     HAL_UART_Transmit_DMA(&huart1,"AS5600 Ready.\r\n",sizeof("AS5600 Ready.\r\n"));
   }
   else
   {
-    // 设备未响应，请检查上拉电阻和接线
     HAL_UART_Transmit_DMA(&huart1,"AS5600 Not Found.\r\n",sizeof("AS5600 Not Found.\r\n"));
   }
   // HAL_Delay(1);

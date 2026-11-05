@@ -9,6 +9,6 @@
 #define AS5600_DEVICE_ADDRESS   0x36   // 7-bit I2C address
 #define AS5600_ANGLE_REGISTER   0x0E   // 角度寄存器 (高位)
 
-void AS5600_test(void);
+float AS5600_Read(void);
 
 #endif //FOC_TEST_AS5600_H
